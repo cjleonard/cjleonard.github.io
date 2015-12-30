@@ -23,8 +23,8 @@ a{
 }
 a:hover{
 	text-decoration:none;
-	background-color:#efff00;
-	color:#369fae;
+	background-color:#ccffff;
+	color:#333333;
 }
 h1{
 	font-family:Arial, Helvetica, sans-serif;
@@ -38,7 +38,7 @@ h2{
 	font-family: Merriweather, sans-serif;
 	font-size: 26px;
 	font-weight:bold;
-	color: #800040;
+	color: #039;
 }
 #wrapper{
 	float:left;
@@ -149,7 +149,7 @@ h2{
 	padding-bottom: 0px;
 	padding-right: 0px;
 	padding-top: 10px;
-	border-top-color: #800040;
+	border-top-color: #039;
 	border-top-style: solid;
 	border-top-width: 3px;
 	text-align: left;
