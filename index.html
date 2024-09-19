@@ -18,24 +18,35 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
-            text-align: center;
             border-radius: 10px;
             max-width: 300px;
             margin: 0 auto;
+            position: relative;
+            overflow: hidden;
         }
         .journal-title {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: bold;
             color: white;
-            margin-bottom: 10px;
             line-height: 1.2;
+            text-align: center;
+            z-index: 10;
         }
         .journal-volume {
-            font-size: 1rem;
+            font-size: 0.9rem;
             color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            margin-top: 5px;
+            z-index: 10;
+        }
+        .cover-art {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
         }
     </style>
 </head>
@@ -47,13 +58,16 @@
         </header>
 
         <main class="max-w-2xl mx-auto">
-            <button onclick="generateWord()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 mb-8 w-full">
+            <button onclick="generateJournal()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 mb-8 w-full">
                 Generate my Bullshit Journal
             </button>
 
             <div id="journalCover" class="journal-cover mb-8 fade-in">
                 <div id="wordDisplay" class="journal-title">Click the button to generate...</div>
                 <div id="journalVolume" class="journal-volume">Volume 1, Issue 1</div>
+                <svg class="cover-art" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Abstract shapes will be generated here -->
+                </svg>
             </div>
 
             <div id="pastWords" class="bg-white rounded-lg shadow p-6 mb-8">
@@ -81,7 +95,7 @@
         let pastWords = [];
 
         function getRandomColor() {
-            return Math.floor(Math.random()*16777215).toString(16);
+            return Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
         }
 
         function generateGradient() {
@@ -90,7 +104,37 @@
             return `linear-gradient(135deg, #${color1} 0%, #${color2} 100%)`;
         }
 
-        function generateWord() {
+        function generateAbstractArt() {
+            const svg = document.querySelector('.cover-art');
+            svg.innerHTML = ''; // Clear previous art
+
+            // Generate random shapes
+            for (let i = 0; i < 5; i++) {
+                const shape = Math.random() > 0.5 ? 'polygon' : 'circle';
+                if (shape === 'polygon') {
+                    const points = Array.from({length: 3 + Math.floor(Math.random() * 5)}, () => 
+                        `${Math.random() * 200},${Math.random() * 300}`
+                    ).join(' ');
+                    svg.innerHTML += `<polygon points="${points}" fill="#${getRandomColor()}" fill-opacity="0.5" />`;
+                } else {
+                    const cx = Math.random() * 200;
+                    const cy = Math.random() * 300;
+                    const r = 10 + Math.random() * 50;
+                    svg.innerHTML += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#${getRandomColor()}" fill-opacity="0.5" />`;
+                }
+            }
+
+            // Add a few lines for extra abstraction
+            for (let i = 0; i < 3; i++) {
+                const x1 = Math.random() * 200;
+                const y1 = Math.random() * 300;
+                const x2 = Math.random() * 200;
+                const y2 = Math.random() * 300;
+                svg.innerHTML += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#${getRandomColor()}" stroke-width="2" />`;
+            }
+        }
+
+        function generateJournal() {
             const word1 = list1[Math.floor(Math.random() * list1.length)];
             const word2 = list2[Math.floor(Math.random() * list2.length)];
             const word3 = list3[Math.floor(Math.random() * list3.length)];
@@ -110,6 +154,8 @@
             const issueNumber = Math.floor(Math.random() * 4) + 1;
             document.getElementById("journalVolume").innerHTML = `Volume ${volumeNumber}, Issue ${issueNumber}`;
 
+            generateAbstractArt();
+
             pastWords.unshift(phrase);
             if (pastWords.length > 5) {
                 pastWords.pop();
@@ -127,8 +173,8 @@
             window.open(url, '_blank');
         }
 
-        // Initialize with a random gradient
-        document.getElementById("journalCover").style.background = generateGradient();
+        // Initialize with a random journal
+        generateJournal();
     </script>
 </body>
 </html>
