@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backlog Buster revenue model</title>
+<style>
+  :root{
+    --paper:#EEF6F0;
+    --card:#FFFFFF;
+    --ink:#16202B;
+    --muted:#5C6672;
+    --faint:#8A929C;
+    --line:#E4E6E2;
+    --line-strong:#CDD1CB;
+    --accent:#0C6B63;
+    --accent-ink:#0A5A53;
+    --accent-wash:#EAF2F1;
+    --warn:#9A6B12;
+    --warn-wash:#F6EEDD;
+    --c-accept:#2F7A63;
+    --c-reject:#99A1AA;
+    --c-minor:#C0892C;
+    --c-major:#2C6E8E;
+    --radius:6px;
+    --sans:"Helvetica Neue",Helvetica,"Myriad Pro",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
+  .serif{font-family:var(--sans);}
+
+  /* ---------- sticky readout ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:rgba(238,246,240,.92);
+    backdrop-filter:saturate(180%) blur(8px);
+    border-bottom:1px solid var(--line-strong);
+  }
+  .topbar-inner{
+    max-width:1180px;margin:0 auto;padding:12px 22px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;flex-direction:column;gap:1px;}
+  .brand .title{font-family:var(--sans);font-size:32px;font-weight:700;letter-spacing:-.6px;}
+  .brand .sub{font-size:12px;color:var(--muted);}
+  .readout{display:flex;align-items:baseline;gap:14px;}
+  .readout .rv{font-family:var(--sans);font-size:26px;font-weight:700;color:var(--accent-ink);letter-spacing:-.3px;}
+  .readout .ms{font-size:13px;color:var(--muted);}
+  .readout .ms b{color:var(--ink);font-weight:600;}
+
+  /* ---------- shell ---------- */
+  .shell{max-width:1180px;margin:0 auto;padding:26px 22px 60px;}
+  .grid{display:grid;grid-template-columns:340px 1fr;gap:26px;align-items:start;}
+
+  /* ---------- panels ---------- */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);}
+  .console{padding:6px 18px 16px;}
+  .group{padding:16px 0;border-bottom:1px solid var(--line);}
+  .group:last-child{border-bottom:0;padding-bottom:4px;}
+  .group-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
+  .group-head h3{margin:0;font-size:13px;font-weight:600;letter-spacing:.2px;}
+  .group-head .hint{font-size:11.5px;color:var(--faint);}
+
+  /* ---------- control rows ---------- */
+  .ctrl{margin:11px 0;}
+  .ctrl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;}
+  .ctrl-head label{font-size:13.5px;color:var(--ink);display:flex;align-items:center;gap:7px;}
+  .swatch{width:9px;height:9px;border-radius:2px;display:inline-block;flex:none;}
+  .ctrl-num-wrap{display:flex;align-items:center;gap:3px;color:var(--muted);}
+  .ctrl-num-wrap .affix{font-size:12.5px;color:var(--faint);}
+  input.ctrl-num{
+    width:78px;text-align:right;font-size:13.5px;font-variant-numeric:tabular-nums;
+    padding:4px 7px;border:1px solid var(--line-strong);border-radius:4px;background:#fff;color:var(--ink);
+    -moz-appearance:textfield;
+  }
+  input.ctrl-num:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent);}
+  input.ctrl-range{
+    width:100%;margin:0;accent-color:var(--accent);height:20px;cursor:pointer;
+  }
+  input.ctrl-range:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px;}
+
+  .badge{font-size:11.5px;padding:2px 8px;border-radius:999px;font-variant-numeric:tabular-nums;}
+  .badge.ok{background:var(--accent-wash);color:var(--accent-ink);}
+  .badge.warn{background:var(--warn-wash);color:var(--warn);}
+
+  .btnrow{display:flex;gap:8px;margin-top:2px;}
+  button.mini{
+    font-size:12px;padding:5px 11px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);
+    border-radius:5px;cursor:pointer;transition:background .12s,border-color .12s;
+  }
+  button.mini:hover{background:var(--paper);border-color:var(--faint);}
+  button.mini:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  .derived{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-top:9px;}
+  .derived b{color:var(--ink);font-weight:600;}
+
+  /* ---------- results ---------- */
+  .results{display:flex;flex-direction:column;gap:22px;}
+  .hero{padding:24px 26px;position:relative;overflow:hidden;}
+  .hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--accent);}
+  .hero .cap{font-size:12.5px;color:var(--muted);margin-bottom:4px;}
+  .hero .big{font-family:var(--sans);font-size:52px;font-weight:700;line-height:1.02;letter-spacing:-1.5px;color:var(--accent-ink);}
+  @media(max-width:420px){.hero .big{font-size:40px;}.brand .title{font-size:26px;}}
+  .hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}
+  .btn-save{
+    font-size:12.5px;padding:7px 13px;border:1px solid var(--accent);color:var(--accent-ink);
+    background:#fff;border-radius:5px;cursor:pointer;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:7px;transition:background .12s;
+  }
+  .btn-save:hover{background:var(--accent-wash);}
+  .btn-save:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .btn-save svg{width:15px;height:15px;flex:none;}
+  .share{display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+  .share.on{display:block;}
+  .share .status{font-size:12.5px;color:var(--accent-ink);margin-bottom:9px;}
+  .share-row{display:flex;gap:8px;}
+  .share-row input{
+    flex:1;min-width:0;font-size:12px;padding:7px 10px;border:1px solid var(--line-strong);
+    border-radius:5px;background:var(--paper);color:var(--muted);font-variant-numeric:tabular-nums;
+  }
+  .share-row input:focus{outline:2px solid var(--accent);outline-offset:0;}
+  .mail{margin:0;}
+  .mail label{display:block;font-size:12.5px;color:var(--ink);margin-bottom:7px;}
+  .mail .share-row input{background:#fff;color:var(--ink);}
+  .mail .note{font-size:11.5px;color:var(--faint);margin-top:8px;line-height:1.5;}
+  .mail .mail-status{font-size:12.5px;margin-top:8px;min-height:1em;}
+  .mail .mail-status.ok{color:var(--accent-ink);}
+  .mail .mail-status.err{color:var(--warn);}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;}
+  @media(max-width:480px){.hero-top{flex-direction:column;}.share-row{flex-direction:column;}}
+  .hero .metrics{display:flex;flex-wrap:wrap;gap:26px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line);}
+  .metric{min-width:96px;}
+  .metric .v{font-size:20px;font-variant-numeric:tabular-nums;}
+  .metric .k{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  .block{padding:20px 22px;}
+  .block h2{margin:0 0 3px;font-size:14px;font-weight:600;}
+  .block .lede{font-size:12.5px;color:var(--muted);margin:0 0 16px;}
+
+  /* funnel */
+  .funnel{display:flex;flex-direction:column;gap:12px;}
+  .stage{display:grid;grid-template-columns:150px 1fr auto;align-items:center;gap:12px;}
+  .stage .name{font-size:13px;color:var(--ink);}
+  .stage .name small{display:block;color:var(--faint);font-size:11px;}
+  .track{height:26px;background:var(--paper);border-radius:4px;overflow:hidden;}
+  .fill{height:100%;border-radius:4px;transition:width .18s ease;}
+  .fill.a{background:var(--accent);}
+  .fill.b{background:var(--accent);opacity:.62;}
+  .fill.c{background:var(--accent);opacity:.4;}
+  .stage .val{font-size:14px;font-variant-numeric:tabular-nums;min-width:56px;text-align:right;}
+
+  /* composition */
+  .comp{display:flex;height:30px;border-radius:5px;overflow:hidden;border:1px solid var(--line);}
+  .comp span{display:block;transition:flex-basis .18s ease;min-width:0;}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;}
+  .legend .li{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);}
+  .legend .li b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+
+  /* ledger */
+  table.ledger{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+  table.ledger th,table.ledger td{padding:9px 8px;text-align:right;font-size:13px;}
+  table.ledger th{font-weight:600;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+  table.ledger th:first-child,table.ledger td:first-child{text-align:left;}
+  table.ledger td{border-bottom:1px solid var(--line);}
+  table.ledger td.cat{position:relative;padding-left:16px;}
+  table.ledger td.cat::before{content:"";position:absolute;left:4px;top:11px;bottom:11px;width:3px;border-radius:2px;background:var(--k);}
+  table.ledger tr.total td{border-top:2px solid var(--ink);border-bottom:0;font-weight:600;padding-top:11px;}
+  table.ledger tr.total td.rev{color:var(--accent-ink);}
+  .rev-cell{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .rev-bar{height:7px;background:var(--accent);opacity:.5;border-radius:2px;transition:width .18s ease;}
+
+  .footnote{font-size:12px;color:var(--muted);line-height:1.6;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .footnote code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;background:var(--paper);padding:1px 5px;border-radius:3px;color:var(--ink);}
+
+  @media(max-width:860px){
+    .grid{grid-template-columns:1fr;}
+    .stage{grid-template-columns:120px 1fr auto;}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="title">Backlog Buster revenue model</span>
+      <span class="sub" id="period-label">Adjust the assumptions to a figure that reflects your reality.</span>
+    </div>
+    <div class="readout">
+      <span class="rv num" id="bar-rev">$0</span>
+      <span class="ms num" id="bar-ms">from <b>0</b> accepted manuscripts</span>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="grid">
+
+    <!-- ============ CONSOLE ============ -->
+    <div class="panel console">
+
+      <div class="group">
+        <div class="group-head"><h3>Submission volume</h3></div>
+        <div id="grp-volume"></div>
+        <!-- <div class="derived"><span>Average weekly submissions</span><b class="num" id="d-weekly">0</b></div> -->
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>Typical editorial breakdown</h3>
+          <span class="badge ok num" id="ed-sum">100%</span>
+        </div>
+        <div id="grp-editorial"></div>
+        <div class="btnrow"><button class="mini" id="btn-normalize">Scale to 100%</button></div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>Manuscripts coming back</h3>
+          <span class="hint">share that returns from author after revisions</span>
+        </div>
+        <div id="grp-return"></div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>Final editorial filter</h3>
+          <span class="hint">rejected by final editor</span>
+        </div>
+        <div id="grp-filter"></div>
+      </div>
+
+      <div class="group">
+        <div class="group-head"><h3>Pricing</h3></div>
+        <div id="grp-pricing"></div>
+        <div class="derived"><span>Average realized APC</span><b class="num" id="d-realized">$0</b></div>
+      </div>
+
+      <div class="btnrow" style="padding-top:14px;">
+        <button class="mini" id="btn-reset">Reset to baseline</button>
+      </div>
+    </div>
+
+    <!-- ============ RESULTS ============ -->
+    <div class="results">
+
+      <div class="panel hero">
+        <div class="hero-top">
+          <div class="cap">Invoiceable revenue from the backlog:</div>
+          <button class="btn-save" id="btn-save" type="button" aria-controls="share" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+            Email this calculation to myself
+          </button>
+        </div>
+        <div class="big num" id="hero-rev">$0</div>
+        <div class="metrics">
+          <div class="metric"><div class="v num" id="m-ms">0</div><div class="k">invoiceable manuscripts</div></div>
+          <div class="metric"><div class="v num" id="m-apc">$0</div><div class="k">realized APC / paper</div></div>
+          <div class="metric"><div class="v num" id="m-yield">0%</div><div class="k">yield on submissions</div></div>
+          <div class="metric"><div class="v num" id="m-back">0</div><div class="k">manuscripts returning</div></div>
+        </div>
+        <div class="share" id="share">
+          <form class="mail" id="mail-form" novalidate>
+            <label for="mail-to">Your email address</label>
+            <div class="share-row">
+              <input id="mail-to" type="email" autocomplete="email" placeholder="you@example.com" required>
+              <button class="mini" id="btn-mail" type="submit">Send</button>
+            </div>
+            <div class="hp" aria-hidden="true"><input id="mail-hp" type="text" tabindex="-1" autocomplete="off"></div>
+            <div class="mail-status" id="mail-status" role="status" aria-live="polite"></div>
+            <div class="note">We'll email you a link that reopens these exact figures, and keep a copy of your address so Cactus can follow up about Backlog Buster. We won't share it or add you to a mailing list.</div>
+          </form>
+        </div>
+      </div>
+
+      <div class="panel block">
+        <h2>Where the manuscripts fall out</h2>
+        <p class="lede">From every submission down to what you can actually invoice.</p>
+        <div class="funnel">
+          <div class="stage">
+            <div class="name">Submissions<small>total jobs in period</small></div>
+            <div class="track"><div class="fill a" id="f-jobs" style="width:100%"></div></div>
+            <div class="val num" id="v-jobs">0</div>
+          </div>
+          <div class="stage">
+            <div class="name">Returning<small>after editorial decisions</small></div>
+            <div class="track"><div class="fill b" id="f-back" style="width:0"></div></div>
+            <div class="val num" id="v-back">0</div>
+          </div>
+          <div class="stage">
+            <div class="name">Invoiceable<small>after final editor filter</small></div>
+            <div class="track"><div class="fill c" id="f-final" style="width:0"></div></div>
+            <div class="val num" id="v-final">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel block">
+        <h2>Editorial composition</h2>
+        <p class="lede">How submissions split by expected first decision.</p>
+        <div class="comp" id="comp"></div>
+        <div class="legend" id="comp-legend"></div>
+      </div>
+
+      <div class="panel block">
+        <h2>Derivation</h2>
+        <p class="lede">Each decision class traced through the pipeline to its revenue contribution.</p>
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th>Decision</th>
+              <th>Editorial&nbsp;%</th>
+              <th>Submissions</th>
+              <th>Back&nbsp;%</th>
+              <th>Returning</th>
+              <th>Invoiceable</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-body"></tbody>
+          <tfoot>
+            <tr class="total">
+              <td>Total</td>
+              <td></td>
+              <td class="num" id="t-subs">0</td>
+              <td></td>
+              <td class="num" id="t-back">0</td>
+              <td class="num" id="t-final">0</td>
+              <td class="num rev" id="t-rev">$0</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="footnote">
+          Revenue&nbsp;=&nbsp;Σ&nbsp;<code>submissions × editorial% × back% × (1 − editor filter) × realized APC</code>, summed across the four decision classes.
+          Realized APC is the average you actually collect per paper after waivers and discounts — set it to your finance team's booked figure rather than list price.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- baseline (from the 01-APR – 31-AUG sheet) ----
+  var DEFAULTS = {
+    totalJobs:3752, periodWeeks:20,
+    pctAccept:34, pctReject:10, pctMinor:13, pctMajor:44,
+    backAccept:100, backReject:0, backMinor:90, backMajor:70,
+    sectionFilter:50,
+    apc:2225, discountPct:25
+  };
+  var state = Object.assign({}, DEFAULTS);
+
+  // ---- control definitions ----
+  var controls = {
+    "grp-volume":[
+      {key:"totalJobs",label:"Manuscripts",min:0,max:20000,rangeMax:10000,step:1}
+    ],
+    "grp-editorial":[
+      {key:"pctAccept",label:"Accept",swatch:"var(--c-accept)",min:0,max:100,step:1,suffix:"%"},
+      {key:"pctReject",label:"Reject",swatch:"var(--c-reject)",min:0,max:100,step:1,suffix:"%"},
+      {key:"pctMinor",label:"Minor revisions",swatch:"var(--c-minor)",min:0,max:100,step:1,suffix:"%"},
+      {key:"pctMajor",label:"Major revisions",swatch:"var(--c-major)",min:0,max:100,step:1,suffix:"%"}
+    ],
+    "grp-return":[
+      {key:"backAccept",label:"Accept",swatch:"var(--c-accept)",min:0,max:100,step:1,suffix:"%"},
+      {key:"backReject",label:"Reject",swatch:"var(--c-reject)",min:0,max:100,step:1,suffix:"%"},
+      {key:"backMinor",label:"Minor revisions",swatch:"var(--c-minor)",min:0,max:100,step:1,suffix:"%"},
+      {key:"backMajor",label:"Major revisions",swatch:"var(--c-major)",min:0,max:100,step:1,suffix:"%"}
+    ],
+    "grp-filter":[
+      {key:"sectionFilter",label:"Percentage",min:0,max:100,step:1,suffix:"%"}
+    ],
+    "grp-pricing":[
+      {key:"apc",label:"List APC",min:0,max:12000,step:25,rangeStep:25,prefix:"$"},
+      {key:"discountPct",label:"Discount",min:0,max:100,step:1,suffix:"%"}
+    ]
+  };
+
+  var refs = {}; // key -> {num, rng, cfg}
+
+  function buildControl(cfg, container){
+    var wrap=document.createElement("div"); wrap.className="ctrl";
+    var swatchHtml = cfg.swatch ? '<span class="swatch" style="background:'+cfg.swatch+'"></span>' : '';
+    var pre = cfg.prefix ? '<span class="affix">'+cfg.prefix+'</span>' : '';
+    var suf = cfg.suffix ? '<span class="affix">'+cfg.suffix+'</span>' : '';
+    wrap.innerHTML =
+      '<div class="ctrl-head">'+
+        '<label for="'+cfg.key+'-num">'+swatchHtml+cfg.label+'</label>'+
+        '<div class="ctrl-num-wrap">'+pre+
+          '<input class="ctrl-num num" id="'+cfg.key+'-num" type="number" min="'+cfg.min+'" max="'+cfg.max+'" step="'+cfg.step+'">'+
+        suf+'</div>'+
+      '</div>'+
+      '<input class="ctrl-range" id="'+cfg.key+'-rng" type="range" min="'+cfg.min+'" max="'+(cfg.rangeMax||cfg.max)+'" step="'+(cfg.rangeStep||cfg.step)+'">';
+    container.appendChild(wrap);
+    var num=wrap.querySelector(".ctrl-num");
+    var rng=wrap.querySelector(".ctrl-range");
+    refs[cfg.key]={num:num,rng:rng,cfg:cfg};
+
+    rng.addEventListener("input",function(){
+      var v=parseFloat(rng.value); if(isNaN(v)) return;
+      state[cfg.key]=v; num.value=formatNum(v,cfg); recompute(); onValuesChanged();
+    });
+    num.addEventListener("input",function(){
+      var v=parseFloat(num.value); if(isNaN(v)) return;
+      state[cfg.key]=v;
+      var rmax=parseFloat(rng.max);
+      rng.value = v>rmax? rmax : v;
+      recompute(); onValuesChanged();
+    });
+  }
+
+  function formatNum(v,cfg){
+    if(cfg.step && cfg.step<1) return (Math.round(v*100)/100);
+    return Math.round(v);
+  }
+
+  function pushToInputs(){
+    Object.keys(refs).forEach(function(k){
+      var r=refs[k], v=state[k];
+      r.num.value=formatNum(v,r.cfg);
+      var rmax=parseFloat(r.rng.max);
+      r.rng.value = v>rmax? rmax : v;
+    });
+  }
+
+  // build all controls
+  Object.keys(controls).forEach(function(cid){
+    var c=document.getElementById(cid);
+    controls[cid].forEach(function(cfg){ buildControl(cfg,c); });
+  });
+
+  // ---- formatting helpers ----
+  function money0(v){ return "$"+Math.round(v).toLocaleString("en-US"); }
+  function money2(v){ return "$"+v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function int(v){ return Math.round(v).toLocaleString("en-US"); }
+  function pct1(v){ return (Math.round(v*10)/10).toLocaleString("en-US")+"%"; }
+
+  var CATCFG=[
+    {key:"accept",label:"Accept",pctKey:"pctAccept",backKey:"backAccept",color:"var(--c-accept)"},
+    {key:"reject",label:"Reject",pctKey:"pctReject",backKey:"backReject",color:"var(--c-reject)"},
+    {key:"minor",label:"Minor revisions",pctKey:"pctMinor",backKey:"backMinor",color:"var(--c-minor)"},
+    {key:"major",label:"Major revisions",pctKey:"pctMajor",backKey:"backMajor",color:"var(--c-major)"}
+  ];
+
+  function recompute(){
+    var s=state;
+    var survive = 1 - s.sectionFilter/100;
+    var realized = s.apc*(1 - s.discountPct/100);
+    var jobs=s.totalJobs;
+    var cats=CATCFG.map(function(c){
+      var edPct=s[c.pctKey], backPct=s[c.backKey];
+      var subs = jobs*edPct/100;
+      var back = subs*backPct/100;
+      var fin  = back*survive;
+      var rev  = fin*realized;
+      return {label:c.label,color:c.color,edPct:edPct,backPct:backPct,subs:subs,back:back,fin:fin,rev:rev};
+    });
+
+    var totSubs=0,totBack=0,totFin=0,totRev=0;
+    cats.forEach(function(c){ totSubs+=c.subs; totBack+=c.back; totFin+=c.fin; totRev+=c.rev; });
+
+    var edSum = s.pctAccept+s.pctReject+s.pctMinor+s.pctMajor;
+    var yield_ = jobs>0 ? totFin/jobs*100 : 0;
+    var weekly = s.periodWeeks>0 ? jobs/s.periodWeeks : 0;
+
+    // sticky + hero
+    set("bar-rev",money0(totRev));
+    document.getElementById("bar-ms").innerHTML="on <b>"+int(totFin)+"</b> manuscripts";
+    set("hero-rev",money0(totRev));
+    set("m-ms",int(totFin));
+    set("m-apc",money2(realized));
+    set("m-yield",pct1(yield_));
+    set("m-back",int(totBack));
+    set("d-weekly",int(weekly));
+    set("d-realized",money2(realized));
+
+    // editorial sum badge
+    var badge=document.getElementById("ed-sum");
+    badge.textContent = (Math.round(edSum*10)/10)+"%";
+    badge.className = "badge num "+(Math.abs(edSum-100)<0.05 ? "ok":"warn");
+
+    // funnel (scale to jobs)
+    var base = Math.max(jobs,1);
+    setW("f-jobs",100);
+    setW("f-back", totBack/base*100);
+    setW("f-final", totFin/base*100);
+    set("v-jobs",int(jobs));
+    set("v-back",int(totBack));
+    set("v-final",int(totFin));
+
+    // composition stacked bar
+    var comp=document.getElementById("comp");
+    var legend=document.getElementById("comp-legend");
+    comp.innerHTML=""; legend.innerHTML="";
+    var subsBase = Math.max(totSubs,1);
+    cats.forEach(function(c){
+      var seg=document.createElement("span");
+      seg.style.flexBasis=(c.subs/subsBase*100)+"%";
+      seg.style.background=c.color;
+      seg.title=c.label+" — "+int(c.subs);
+      comp.appendChild(seg);
+      var li=document.createElement("div"); li.className="li";
+      li.innerHTML='<span class="swatch" style="background:'+c.color+'"></span>'+c.label+' <b>'+int(c.subs)+'</b>';
+      legend.appendChild(li);
+    });
+
+    // ledger
+    var body=document.getElementById("ledger-body");
+    var maxRev=Math.max.apply(null,cats.map(function(c){return c.rev;}).concat([1]));
+    body.innerHTML="";
+    cats.forEach(function(c){
+      var tr=document.createElement("tr");
+      var barW = c.rev/maxRev*70; // px-ish via inline width %
+      tr.innerHTML=
+        '<td class="cat" style="--k:'+c.color+'">'+c.label+'</td>'+
+        '<td class="num">'+pct1(c.edPct)+'</td>'+
+        '<td class="num">'+int(c.subs)+'</td>'+
+        '<td class="num">'+pct1(c.backPct)+'</td>'+
+        '<td class="num">'+int(c.back)+'</td>'+
+        '<td class="num">'+int(c.fin)+'</td>'+
+        '<td class="num"><span class="rev-cell"><span class="rev-bar" style="width:'+barW+'px"></span>'+money0(c.rev)+'</span></td>';
+      body.appendChild(tr);
+    });
+    set("t-subs",int(totSubs));
+    set("t-back",int(totBack));
+    set("t-final",int(totFin));
+    set("t-rev",money0(totRev));
+  }
+
+  function set(id,txt){ var e=document.getElementById(id); if(e) e.textContent=txt; }
+  function setW(id,w){ var e=document.getElementById(id); if(e) e.style.width=Math.max(0,Math.min(100,w))+"%"; }
+
+  // ---- save / share via link ----
+  function encodeState(){
+    var parts=[];
+    Object.keys(DEFAULTS).forEach(function(k){ parts.push(k+"="+state[k]); });
+    return parts.join("&");
+  }
+  function applyFromLink(){
+    var raw = (location.hash && location.hash.length>1) ? location.hash.slice(1) : "";
+    if(!raw) return false;
+    var found=false;
+    raw.split("&").forEach(function(pair){
+      var i=pair.indexOf("="); if(i<0) return;
+      var k=decodeURIComponent(pair.slice(0,i));
+      var v=parseFloat(decodeURIComponent(pair.slice(i+1)));
+      if(Object.prototype.hasOwnProperty.call(DEFAULTS,k) && !isNaN(v)){ state[k]=v; found=true; }
+    });
+    return found;
+  }
+  var shareBox=document.getElementById("share");
+  var saveBtn=document.getElementById("btn-save");
+  var linkLive=false; // once a link exists, the address bar tracks every later change
+
+  function currentLink(){
+    return location.href.split("#")[0]+"#"+encodeState();
+  }
+  function writeLink(){
+    var url=currentLink();
+    history.replaceState(null,"",url);
+    return url;
+  }
+  function openEmail(){
+    shareBox.classList.add("on");
+    saveBtn.setAttribute("aria-expanded","true");
+    document.getElementById("mail-to").focus();
+  }
+  function onValuesChanged(){
+    if(linkLive) writeLink();
+  }
+  saveBtn.addEventListener("click",openEmail);
+
+  // ---- email the link (EmailJS) ----
+  // Fill these in from your EmailJS dashboard.
+  var EMAILJS = {
+    serviceId:  "service_rucfk17",   // Email Services  -> Service ID
+    templateId: "template_snra9jt",  // Email Templates -> Template ID
+    publicKey:  "DFbNEVt8mX7qXPabI"    // Account -> General -> Public Key
+  };
+
+  var mailForm=document.getElementById("mail-form");
+  var mailTo=document.getElementById("mail-to");
+  var mailBtn=document.getElementById("btn-mail");
+  var mailStatus=document.getElementById("mail-status");
+
+  function mailMsg(txt,kind){ mailStatus.textContent=txt; mailStatus.className="mail-status "+(kind||""); }
+
+  mailForm.addEventListener("submit",function(e){
+    e.preventDefault();
+    if(document.getElementById("mail-hp").value) return; // bot filled the hidden field
+    var to=mailTo.value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){ mailMsg("Please enter a valid email address.","err"); mailTo.focus(); return; }
+    if(EMAILJS.publicKey.indexOf("YOUR_")===0){ mailMsg("Email sending isn't set up yet.","err"); return; }
+
+    var link=writeLink(); linkLive=true;
+    mailBtn.disabled=true; mailMsg("Sending\u2026");
+    fetch("https://api.emailjs.com/api/v1.0/email/send",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        service_id:EMAILJS.serviceId,
+        template_id:EMAILJS.templateId,
+        user_id:EMAILJS.publicKey,
+        template_params:{
+          to_email:to,
+          link:link,
+          revenue:document.getElementById("hero-rev").textContent,
+          manuscripts:document.getElementById("m-ms").textContent,
+          submissions:int(state.totalJobs),
+          apc:document.getElementById("m-apc").textContent
+        }
+      })
+    }).then(function(r){
+      if(!r.ok) throw new Error("status "+r.status);
+      mailMsg("Sent to "+to+". Check your inbox (and spam folder) in a minute or two.","ok");
+      mailTo.value="";
+    }).catch(function(){
+      mailMsg("Sorry, that didn't send. Copy the link above instead, or try again shortly.","err");
+    }).then(function(){ mailBtn.disabled=false; });
+  });
+
+  // ---- buttons ----
+  document.getElementById("btn-reset").addEventListener("click",function(){
+    state=Object.assign({},DEFAULTS);
+    if(location.hash){ history.replaceState(null,"",location.pathname+location.search); }
+    shareBox.classList.remove("on");
+    saveBtn.setAttribute("aria-expanded","false");
+    linkLive=false;
+    pushToInputs(); recompute();
+  });
+  document.getElementById("btn-normalize").addEventListener("click",function(){
+    var sum=state.pctAccept+state.pctReject+state.pctMinor+state.pctMajor;
+    if(sum<=0) return;
+    ["pctAccept","pctReject","pctMinor","pctMajor"].forEach(function(k){
+      state[k]=Math.round(state[k]/sum*1000)/10;
+    });
+    pushToInputs(); recompute(); onValuesChanged();
+  });
+
+  // a link pasted into an already-open tab only changes the hash, which doesn't reload the page
+  window.addEventListener("hashchange",function(){
+    state=Object.assign({},DEFAULTS);
+    if(applyFromLink()){ pushToInputs(); recompute(); }
+  });
+
+  // init
+  if(applyFromLink()){ linkLive=true; }
+  pushToInputs();
+  recompute();
+})();
+</script>
+</body>
+</html>
