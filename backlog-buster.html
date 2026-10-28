@@ -71,6 +71,23 @@
   .group-head h3{margin:0;font-size:13px;font-weight:600;letter-spacing:.2px;}
   .group-head .hint{font-size:11.5px;color:var(--faint);}
 
+  /* ---------- collapsible group ---------- */
+  button.toggle{
+    all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+    font:inherit;color:inherit;border-radius:3px;
+  }
+  button.toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+  button.toggle .caret{
+    width:0;height:0;border-left:4.5px solid transparent;border-right:4.5px solid transparent;
+    border-top:6px solid var(--muted);transform:rotate(-90deg);transition:transform .15s ease;
+  }
+  button.toggle[aria-expanded="true"] .caret{transform:none;}
+  button.toggle:hover .caret{border-top-color:var(--ink);}
+  .collapsed-summary{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:-4px;}
+  .collapsed-summary[hidden]{display:none;}
+  .collapsed-summary .item{display:inline-flex;align-items:center;gap:6px;}
+  .collapsed-summary b{color:var(--ink);font-weight:600;}
+
   /* ---------- control rows ---------- */
   .ctrl{margin:11px 0;}
   .ctrl-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px;}
@@ -218,19 +235,23 @@
 
       <div class="group">
         <div class="group-head">
-          <h3>First editorial breakdown</h3>
+          <h3><button class="toggle" type="button" aria-expanded="false" aria-controls="body-editorial" data-summary="sum-editorial"><span class="caret" aria-hidden="true"></span>First editorial breakdown</button></h3>
           <span class="badge ok num" id="ed-sum">100%</span>
         </div>
-        <div id="grp-editorial"></div>
-        <div class="btnrow"><button class="mini" id="btn-normalize">Scale to 100%</button></div>
+        <div class="collapsed-summary num" id="sum-editorial"></div>
+        <div id="body-editorial" hidden>
+          <div id="grp-editorial"></div>
+          <div class="btnrow"><button class="mini" id="btn-normalize">Scale to 100%</button></div>
+        </div>
       </div>
 
       <div class="group">
         <div class="group-head">
-          <h3>Manuscripts coming back</h3>
+          <h3><button class="toggle" type="button" aria-expanded="false" aria-controls="grp-return" data-summary="sum-return"><span class="caret" aria-hidden="true"></span>Manuscripts coming back</button></h3>
           <span class="hint">share that returns from author after revisions</span>
         </div>
-        <div id="grp-return"></div>
+        <div class="collapsed-summary num" id="sum-return"></div>
+        <div id="grp-return" hidden></div>
       </div>
 
       <div class="group">
@@ -426,6 +447,7 @@
 
   function formatNum(v,cfg){
     if(cfg.step && cfg.step<1) return (Math.round(v*100)/100);
+    if(cfg.suffix==="%") return Math.round(v*10)/10; // keep tenths from "Scale to 100%"
     return Math.round(v);
   }
 
@@ -540,6 +562,15 @@
     set("t-back",int(totBack));
     set("t-final",int(totFin));
     set("t-rev",money0(totRev));
+
+    // collapsed group summaries
+    function summary(pctOf){
+      return cats.map(function(c){
+        return '<span class="item"><span class="swatch" style="background:'+c.color+'"></span>'+c.label+' <b>'+pct1(pctOf(c))+'</b></span>';
+      }).join("");
+    }
+    document.getElementById("sum-editorial").innerHTML = summary(function(c){ return c.edPct; });
+    document.getElementById("sum-return").innerHTML = summary(function(c){ return c.backPct; });
   }
 
   function set(id,txt){ var e=document.getElementById(id); if(e) e.textContent=txt; }
@@ -634,6 +665,16 @@
     }).then(function(){ mailBtn.disabled=false; });
   });
 
+  // ---- collapsible groups ----
+  Array.prototype.forEach.call(document.querySelectorAll("button.toggle"),function(tog){
+    tog.addEventListener("click",function(){
+      var open = tog.getAttribute("aria-expanded")!=="true";
+      tog.setAttribute("aria-expanded",String(open));
+      document.getElementById(tog.getAttribute("aria-controls")).hidden=!open;
+      document.getElementById(tog.dataset.summary).hidden=open;
+    });
+  });
+
   // ---- buttons ----
   document.getElementById("btn-reset").addEventListener("click",function(){
     state=Object.assign({},DEFAULTS);
@@ -646,9 +687,16 @@
   document.getElementById("btn-normalize").addEventListener("click",function(){
     var sum=state.pctAccept+state.pctReject+state.pctMinor+state.pctMajor;
     if(sum<=0) return;
-    ["pctAccept","pctReject","pctMinor","pctMajor"].forEach(function(k){
-      state[k]=Math.round(state[k]/sum*1000)/10;
-    });
+    // work in tenths of a percent; round down, then hand the leftover tenths
+    // to the largest remainders so the four always total exactly 100
+    var keys=["pctAccept","pctReject","pctMinor","pctMajor"];
+    var raw=keys.map(function(k){ return state[k]/sum*1000; });
+    var tenths=raw.map(Math.floor);
+    var left=1000-tenths.reduce(function(a,b){ return a+b; },0);
+    keys.map(function(k,i){ return i; })
+      .sort(function(a,b){ return (raw[b]-tenths[b])-(raw[a]-tenths[a]); })
+      .slice(0,left).forEach(function(i){ tenths[i]++; });
+    keys.forEach(function(k,i){ state[k]=tenths[i]/10; });
     pushToInputs(); recompute(); onValuesChanged();
   });
 
