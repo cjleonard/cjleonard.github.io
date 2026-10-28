@@ -241,7 +241,6 @@
         <div class="collapsed-summary num" id="sum-editorial"></div>
         <div id="body-editorial" hidden>
           <div id="grp-editorial"></div>
-          <div class="btnrow"><button class="mini" id="btn-normalize">Scale to 100%</button></div>
         </div>
       </div>
 
@@ -379,7 +378,7 @@
   // ---- baseline (from the 01-APR – 31-AUG sheet) ----
   var DEFAULTS = {
     totalJobs:3752, periodWeeks:20,
-    pctAccept:34, pctReject:10, pctMinor:13, pctMajor:44,
+    pctAccept:34, pctReject:10, pctMinor:13, pctMajor:43,
     backAccept:100, backReject:0, backMinor:90, backMajor:70,
     sectionFilter:50,
     apc:2225, discountPct:25
@@ -434,15 +433,49 @@
 
     rng.addEventListener("input",function(){
       var v=parseFloat(rng.value); if(isNaN(v)) return;
-      state[cfg.key]=v; num.value=formatNum(v,cfg); recompute(); onValuesChanged();
+      state[cfg.key]=v; num.value=formatNum(v,cfg);
+      if(ED_KEYS.indexOf(cfg.key)>=0){ rebalanceEditorial(cfg.key); pushToInputs(cfg.key); }
+      recompute(); onValuesChanged();
     });
     num.addEventListener("input",function(){
       var v=parseFloat(num.value); if(isNaN(v)) return;
       state[cfg.key]=v;
       var rmax=parseFloat(rng.max);
       rng.value = v>rmax? rmax : v;
+      if(ED_KEYS.indexOf(cfg.key)>=0){ rebalanceEditorial(cfg.key); pushToInputs(cfg.key); }
       recompute(); onValuesChanged();
     });
+  }
+
+  // ---- editorial shares always total 100% ----
+  var ED_KEYS=["pctAccept","pctReject","pctMinor","pctMajor"];
+
+  // split `total` tenths of a percent across `weights`: round down, then hand the
+  // leftover tenths to the largest remainders so the parts sum exactly to `total`
+  function apportion(weights,total){
+    var sum=weights.reduce(function(a,b){ return a+b; },0);
+    var raw=weights.map(function(w){ return sum>0 ? w/sum*total : total/weights.length; });
+    var tenths=raw.map(Math.floor);
+    var left=total-tenths.reduce(function(a,b){ return a+b; },0);
+    raw.map(function(r,i){ return i; })
+      .sort(function(a,b){ return (raw[b]-tenths[b])-(raw[a]-tenths[a]); })
+      .slice(0,left).forEach(function(i){ tenths[i]++; });
+    return tenths;
+  }
+
+  // the moved slider keeps its value; the other three share what's left in their current proportions
+  function rebalanceEditorial(movedKey){
+    var mine=Math.round(Math.max(0,Math.min(100,state[movedKey]))*10);
+    state[movedKey]=mine/10;
+    var others=ED_KEYS.filter(function(k){ return k!==movedKey; });
+    var tenths=apportion(others.map(function(k){ return Math.max(0,state[k]); }),1000-mine);
+    others.forEach(function(k,i){ state[k]=tenths[i]/10; });
+  }
+
+  // used when a saved link carries shares that don't total 100%
+  function normalizeEditorial(){
+    var tenths=apportion(ED_KEYS.map(function(k){ return Math.max(0,state[k]); }),1000);
+    ED_KEYS.forEach(function(k,i){ state[k]=tenths[i]/10; });
   }
 
   function formatNum(v,cfg){
@@ -451,8 +484,9 @@
     return Math.round(v);
   }
 
-  function pushToInputs(){
+  function pushToInputs(skipKey){
     Object.keys(refs).forEach(function(k){
+      if(k===skipKey) return; // don't rewrite the box the user is typing in
       var r=refs[k], v=state[k];
       r.num.value=formatNum(v,r.cfg);
       var rmax=parseFloat(r.rng.max);
@@ -684,30 +718,14 @@
     linkLive=false;
     pushToInputs(); recompute();
   });
-  document.getElementById("btn-normalize").addEventListener("click",function(){
-    var sum=state.pctAccept+state.pctReject+state.pctMinor+state.pctMajor;
-    if(sum<=0) return;
-    // work in tenths of a percent; round down, then hand the leftover tenths
-    // to the largest remainders so the four always total exactly 100
-    var keys=["pctAccept","pctReject","pctMinor","pctMajor"];
-    var raw=keys.map(function(k){ return state[k]/sum*1000; });
-    var tenths=raw.map(Math.floor);
-    var left=1000-tenths.reduce(function(a,b){ return a+b; },0);
-    keys.map(function(k,i){ return i; })
-      .sort(function(a,b){ return (raw[b]-tenths[b])-(raw[a]-tenths[a]); })
-      .slice(0,left).forEach(function(i){ tenths[i]++; });
-    keys.forEach(function(k,i){ state[k]=tenths[i]/10; });
-    pushToInputs(); recompute(); onValuesChanged();
-  });
-
   // a link pasted into an already-open tab only changes the hash, which doesn't reload the page
   window.addEventListener("hashchange",function(){
     state=Object.assign({},DEFAULTS);
-    if(applyFromLink()){ pushToInputs(); recompute(); }
+    if(applyFromLink()){ normalizeEditorial(); pushToInputs(); recompute(); }
   });
 
   // init
-  if(applyFromLink()){ linkLive=true; }
+  if(applyFromLink()){ linkLive=true; normalizeEditorial(); }
   pushToInputs();
   recompute();
 })();
